@@ -176,8 +176,12 @@
     <div style="flex:1; display:flex; justify-content:center;">
       <div id="statusBlock"></div>
     </div>
-    <button class="btn btn-ghost" id="rulesToggleBtn" type="button">Правила</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost" id="voiceBtn" type="button">🎤 Включить звук</button>
+      <button class="btn btn-ghost" id="rulesToggleBtn" type="button">Правила</button>
+    </div>
   </div>
+  <audio id="remoteAudio" autoplay></audio>
 
   <div id="rulesInGame" class="rules-card hidden">
     <ul>
@@ -208,24 +212,26 @@ const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 const COLS = ['a','b','c','d','e','f','g','h'];
 
 function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+const CAMP_ROWS = 3, CAMP_COLS = 4; // блок 3×4 = 12 фишек в углу
+const CAMP_SIZE = CAMP_ROWS * CAMP_COLS;
 function initBoard(){
   const b = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-    if(r+c<=3) b[r][c]=1;
-    if(r+c>=11) b[r][c]=2;
+    if(r<CAMP_ROWS && c<CAMP_COLS) b[r][c]=1;
+    if(r>=SIZE-CAMP_ROWS && c>=SIZE-CAMP_COLS) b[r][c]=2;
   }
   return b;
 }
-function inZone1(r,c){ return r+c<=3; }
-function inZone2(r,c){ return r+c>=11; }
+function inZone1(r,c){ return r<CAMP_ROWS && c<CAMP_COLS; }
+function inZone2(r,c){ return r>=SIZE-CAMP_ROWS && c>=SIZE-CAMP_COLS; }
 function checkWinner(board){
   let p1=0,p2=0;
   for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
     if(board[r][c]===1 && inZone2(r,c)) p1++;
     if(board[r][c]===2 && inZone1(r,c)) p2++;
   }
-  if(p1===10) return 1;
-  if(p2===10) return 2;
+  if(p1===CAMP_SIZE) return 1;
+  if(p2===CAMP_SIZE) return 2;
   return null;
 }
 function getSimpleMoves(board,r,c){
@@ -261,6 +267,9 @@ let conn = null;
 let gameState = null;
 let selected = null;
 let chainActive = false;
+let localStream = null;
+let currentCall = null;
+let micOn = false;
 
 const el = (id) => document.getElementById(id);
 
@@ -313,6 +322,7 @@ function startHost(){
     players: { 1: playerName || 'Игрок 1', 2: '' }
   };
   peer = new Peer(roomCode);
+  registerCallHandler();
   peer.on('open', () => {
     showLobbyStatus('Комната открыта. Ждём второго игрока — отправьте код «' + roomCode + '»…');
   });
@@ -337,6 +347,7 @@ function startJoiner(){
   el('startBtn').disabled = true;
   showLobbyStatus('Подключаюсь к комнате «' + roomCode + '»…');
   peer = new Peer();
+  registerCallHandler();
   peer.on('open', () => {
     conn = peer.connect(roomCode, { reliable: true });
     conn.on('open', () => {
@@ -356,6 +367,53 @@ function startJoiner(){
     el('lobbyStatus').classList.add('hidden');
   });
 }
+
+// ---------- Голосовая связь (через тот же P2P-канал) ----------
+function registerCallHandler(){
+  peer.on('call', async (call) => {
+    if(!localStream){
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micOn = true;
+        el('voiceBtn').textContent = '🔇 Выключить звук';
+      } catch(e){
+        console.error('Микрофон недоступен', e);
+        return;
+      }
+    }
+    call.answer(localStream);
+    call.on('stream', attachRemoteStream);
+    currentCall = call;
+  });
+}
+
+function attachRemoteStream(stream){
+  el('remoteAudio').srcObject = stream;
+}
+
+async function enableVoice(){
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e){
+    alert('Не удалось получить доступ к микрофону: ' + e.message);
+    return;
+  }
+  micOn = true;
+  el('voiceBtn').textContent = '🔇 Выключить звук';
+  if(conn && conn.peer && !currentCall){
+    currentCall = peer.call(conn.peer, localStream);
+    currentCall.on('stream', attachRemoteStream);
+  }
+}
+
+function toggleVoice(){
+  if(!micOn){ enableVoice(); return; }
+  const track = localStream.getAudioTracks()[0];
+  track.enabled = !track.enabled;
+  el('voiceBtn').textContent = track.enabled ? '🔇 Выключить звук' : '🎤 Включить микрофон';
+}
+
+el('voiceBtn').onclick = toggleVoice;
 
 function handleData(data){
   if(data.type === 'meta'){

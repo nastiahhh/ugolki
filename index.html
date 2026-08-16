@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Уголки — игра на двоих</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root {
+    --bg-deep: #2B1B12;
+    --panel: #3E2A1D;
+    --board-dark: #6B4226;
+    --board-light: #E8D9BE;
+    --accent-gold: #C9A24B;
+    --accent-sage: #8FA37E;
+    --text-cream: #F3E9D2;
+    --text-muted: #C9B590;
+    --font-display: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(ellipse at top, #3a2517 0%, var(--bg-deep) 60%);
+    color: var(--text-cream);
+    font-family: var(--font-body);
+    padding: 28px 16px 40px;
+    min-height: 100%;
+  }
+  h1 { font-family: var(--font-display); font-size: 44px; margin: 0; color: var(--accent-gold); letter-spacing: 0.02em; }
+  .wrap { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .center { text-align: center; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .subtitle { color: var(--text-muted); font-size: 14.5px; margin-top: 6px; }
+  .card { background: var(--panel); border: 1px solid #58402c; border-radius: 14px; padding: 22px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+  label.field-label { display: block; font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-top: 16px; margin-bottom: 6px; }
+  input[type=text] {
+    width: 100%; background: #25160E; border: 1px solid #5c4530; border-radius: 8px;
+    padding: 10px 12px; color: var(--text-cream); font-size: 15px; font-family: var(--font-body); outline: none;
+  }
+  input[type=text]::placeholder { color: #a9927a; }
+  .hint { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+  .row { display: flex; gap: 8px; }
+  .row > input { flex: 1; }
+  .btn { transition: transform .12s ease, background .12s ease; cursor: pointer; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary {
+    width: 100%; padding: 13px 16px; border-radius: 9px; border: none; background: var(--accent-gold);
+    color: #2B1B12; font-weight: 700; font-size: 15.5px; box-shadow: 0 6px 16px rgba(201,162,75,0.25);
+  }
+  .btn-primary:disabled { opacity: .55; cursor: default; transform: none; }
+  .btn-small {
+    padding: 0 14px; height: 40px; border-radius: 8px; border: 1px solid #5c4530;
+    background: #25160E; color: var(--text-cream); font-size: 13px;
+  }
+  .btn-ghost {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid #5c4530; background: transparent;
+    color: var(--text-muted); font-size: 12.5px; white-space: nowrap;
+  }
+  .tabs { display: flex; gap: 10px; }
+  .tab {
+    flex: 1; padding: 10px 8px; border-radius: 8px; border: 1px solid #5c4530; background: #25160E;
+    color: var(--text-cream); font-size: 13.5px; text-align: center; cursor: pointer;
+  }
+  .tab.active { border-color: var(--accent-gold); background: rgba(201,162,75,0.14); }
+  .rules-card { background: rgba(62,42,29,0.6); border: 1px solid #58402c; border-radius: 12px; padding: 16px 18px; }
+  .rules-title { font-family: var(--font-display); font-size: 17px; color: var(--accent-gold); margin-bottom: 8px; }
+  .rules-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.6; }
+  .error { color: #E29A8A; font-size: 13px; margin-top: 10px; }
+  .status { color: var(--text-muted); font-size: 13.5px; margin-top: 14px; text-align: center; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--text-muted); border-top-color: var(--accent-gold); animation: spin 0.8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .game-wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .room-label { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+  .room-plaque { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.14em; background: #25160E; border: 1.5px solid var(--accent-gold); border-radius: 7px; padding: 5px 12px; color: var(--accent-gold); cursor: pointer; }
+  .turn-banner { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; }
+  .winner-banner { font-family: var(--font-display); font-size: 18px; color: var(--accent-gold); }
+  .dot { display: inline-block; width: 13px; height: 13px; border-radius: 50%; }
+  .dot-light { background: radial-gradient(circle at 35% 30%, #FBF3E1, #E4CFA0 70%, #C9A876); border: 1px solid #b89a68; }
+  .dot-dark { background: radial-gradient(circle at 35% 30%, #4a3323, #241812 70%, #120b07); border: 1px solid #0c0704; }
+  .pulse { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+  .board-outer { display: flex; justify-content: center; }
+  .board {
+    display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+    width: min(92vw, 480px); height: min(92vw, 480px); border: 6px solid #4a3323; border-radius: 10px;
+    overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+  }
+  .cell { position: relative; display: flex; align-items: center; justify-content: center; }
+  .cell.dark { background: var(--board-dark); }
+  .cell.light { background: var(--board-light); }
+  .cell.selected { box-shadow: inset 0 0 0 3px var(--accent-gold); }
+  .camp-mark { position: absolute; inset: 3px; border-radius: 4px; background: var(--accent-gold); opacity: 0.16; }
+  .piece {
+    width: 68%; height: 68%; border-radius: 50%;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4), inset 0 2px 3px rgba(255,255,255,0.15);
+    animation: pop .18s ease-out;
+  }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .piece.p1 { background: radial-gradient(circle at 35% 30%, #FBF3E1, #E4CFA0 70%, #C9A876); border: 1px solid #b89a68; }
+  .piece.p2 { background: radial-gradient(circle at 35% 30%, #4a3323, #241812 70%, #120b07); border: 1px solid #0c0704; }
+  .move-dot { position: absolute; width: 26%; height: 26%; border-radius: 50%; opacity: .75; }
+
+  .bottom-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-muted); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .log { display: flex; flex-wrap: wrap; gap: 6px 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); border-top: 1px solid #4a3323; padding-top: 10px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="lobby" class="wrap">
+  <div class="center">
+    <div class="eyebrow">деревянная доска · 8×8 · P2P без сервера</div>
+    <h1>Уголки</h1>
+    <div class="subtitle">партия на двоих, каждый — за своим экраном</div>
+  </div>
+
+  <div class="card">
+    <label class="field-label">Ваше имя</label>
+    <input type="text" id="playerName" placeholder="например, Бабушка" maxlength="24">
+
+    <label class="field-label">Кто вы в этой партии</label>
+    <div class="tabs">
+      <div class="tab active" id="tabHost">Создаю игру (хожу первым)</div>
+      <div class="tab" id="tabJoin">Присоединяюсь (хожу вторым)</div>
+    </div>
+
+    <div id="hostPanel">
+      <label class="field-label">Код комнаты</label>
+      <div class="row">
+        <input type="text" id="roomCodeHost" placeholder="ABC123" maxlength="10" style="letter-spacing:0.12em;font-family:var(--font-mono)">
+        <button class="btn btn-small" id="genCodeBtn" type="button">Создать код</button>
+      </div>
+      <div class="hint">Придумайте код и отправьте его второму игроку — например, в сообщении. После нажатия «Начать игру» ждите, пока второй игрок присоединится.</div>
+    </div>
+
+    <div id="joinPanel" class="hidden">
+      <label class="field-label">Код комнаты (от первого игрока)</label>
+      <input type="text" id="roomCodeJoin" placeholder="ABC123" maxlength="10" style="letter-spacing:0.12em;font-family:var(--font-mono)">
+      <div class="hint">Введите код, который вам прислал первый игрок.</div>
+    </div>
+
+    <div id="lobbyError" class="error hidden"></div>
+    <div id="lobbyStatus" class="status hidden"></div>
+
+    <button class="btn btn-primary" id="startBtn" type="button" style="margin-top:18px">Начать игру</button>
+  </div>
+
+  <div class="rules-card">
+    <div class="rules-title">Правила этой партии</div>
+    <ul>
+      <li>У каждого — 10 фишек треугольником в своём углу доски.</li>
+      <li>Цель — первым переставить все фишки в противоположный угол.</li>
+      <li>Ход: на соседнюю клетку в любом направлении, включая диагональ.</li>
+      <li>Или прыжок через фишку (свою или чужую) на пустую клетку за ней, тоже по диагонали.</li>
+      <li>Прыжки можно продолжать цепочкой одной и той же фишкой, пока есть куда прыгнуть.</li>
+      <li>Фишки при прыжке не снимаются — просто перепрыгиваются.</li>
+    </ul>
+  </div>
+
+  <div class="hint center">Соединение идёт напрямую между браузерами (WebRTC), без базы данных. Оба должны быть онлайн одновременно, пока не подключитесь.</div>
+</div>
+
+<div id="gameScreen" class="game-wrap hidden">
+  <div class="top-bar">
+    <div>
+      <div class="room-label">Комната</div>
+      <button class="room-plaque" id="roomPlaque" type="button"></button>
+    </div>
+    <div style="flex:1; display:flex; justify-content:center;">
+      <div id="statusBlock"></div>
+    </div>
+    <button class="btn btn-ghost" id="rulesToggleBtn" type="button">Правила</button>
+  </div>
+
+  <div id="rulesInGame" class="rules-card hidden">
+    <ul>
+      <li>Ход на соседнюю клетку в любом направлении, включая диагональ.</li>
+      <li>Прыжок через фишку (свою или чужую) на пустую клетку сразу за ней.</li>
+      <li>После прыжка та же фишка может прыгать дальше цепочкой.</li>
+      <li>Простой шаг завершает ход сразу; после прыжка можно остановиться кнопкой «Закончить ход».</li>
+    </ul>
+  </div>
+
+  <div class="board-outer">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="legend" id="legend"></div>
+    <button class="btn btn-primary" id="endTurnBtn" type="button" style="display:none; width:auto; padding:9px 16px; font-size:13.5px;">Закончить ход</button>
+    <button class="btn btn-primary" id="newGameBtn" type="button" style="display:none; width:auto; padding:9px 16px; font-size:13.5px;">Начать заново</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+// ---------- Игровая логика (как в оригинале) ----------
+const SIZE = 8;
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const COLS = ['a','b','c','d','e','f','g','h'];
+
+function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+function initBoard(){
+  const b = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+    if(r+c<=3) b[r][c]=1;
+    if(r+c>=11) b[r][c]=2;
+  }
+  return b;
+}
+function inZone1(r,c){ return r+c<=3; }
+function inZone2(r,c){ return r+c>=11; }
+function checkWinner(board){
+  let p1=0,p2=0;
+  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+    if(board[r][c]===1 && inZone2(r,c)) p1++;
+    if(board[r][c]===2 && inZone1(r,c)) p2++;
+  }
+  if(p1===10) return 1;
+  if(p2===10) return 2;
+  return null;
+}
+function getSimpleMoves(board,r,c){
+  const m=[];
+  for(const [dr,dc] of DIRS){
+    const nr=r+dr, nc=c+dc;
+    if(inBounds(nr,nc) && board[nr][nc]===0) m.push([nr,nc]);
+  }
+  return m;
+}
+function getJumpMoves(board,r,c){
+  const m=[];
+  for(const [dr,dc] of DIRS){
+    const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+    if(inBounds(mr,mc) && board[mr][mc]!==0 && inBounds(lr,lc) && board[lr][lc]===0) m.push([lr,lc]);
+  }
+  return m;
+}
+function coordLabel(r,c){ return COLS[c] + (SIZE-r); }
+function cloneBoard(b){ return b.map(row=>row.slice()); }
+function randomRoomCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<6;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+// ---------- Состояние ----------
+let myRole = 1;
+let playerName = '';
+let roomCode = '';
+let peer = null;
+let conn = null;
+let gameState = null;
+let selected = null;
+let chainActive = false;
+
+const el = (id) => document.getElementById(id);
+
+// ---------- Лобби ----------
+el('tabHost').onclick = () => {
+  el('tabHost').classList.add('active');
+  el('tabJoin').classList.remove('active');
+  el('hostPanel').classList.remove('hidden');
+  el('joinPanel').classList.add('hidden');
+  myRole = 1;
+};
+el('tabJoin').onclick = () => {
+  el('tabJoin').classList.add('active');
+  el('tabHost').classList.remove('active');
+  el('joinPanel').classList.remove('hidden');
+  el('hostPanel').classList.add('hidden');
+  myRole = 2;
+};
+el('genCodeBtn').onclick = () => { el('roomCodeHost').value = randomRoomCode(); };
+
+function showLobbyError(msg){
+  el('lobbyError').textContent = msg;
+  el('lobbyError').classList.remove('hidden');
+}
+function clearLobbyError(){ el('lobbyError').classList.add('hidden'); }
+function showLobbyStatus(msg){
+  el('lobbyStatus').innerHTML = '<span class="spinner"></span>' + msg;
+  el('lobbyStatus').classList.remove('hidden');
+}
+
+el('startBtn').onclick = () => {
+  clearLobbyError();
+  playerName = el('playerName').value.trim();
+  if(myRole === 1){
+    roomCode = el('roomCodeHost').value.trim().toUpperCase();
+    if(!roomCode){ showLobbyError('Придумайте код комнаты или нажмите «Создать код».'); return; }
+    startHost();
+  } else {
+    roomCode = el('roomCodeJoin').value.trim().toUpperCase();
+    if(!roomCode){ showLobbyError('Введите код комнаты, который вам прислали.'); return; }
+    startJoiner();
+  }
+};
+
+function startHost(){
+  el('startBtn').disabled = true;
+  showLobbyStatus('Открываю комнату «' + roomCode + '»…');
+  gameState = {
+    board: initBoard(), turn: 1, winner: null, history: [],
+    players: { 1: playerName || 'Игрок 1', 2: '' }
+  };
+  peer = new Peer(roomCode);
+  peer.on('open', () => {
+    showLobbyStatus('Комната открыта. Ждём второго игрока — отправьте код «' + roomCode + '»…');
+  });
+  peer.on('connection', (c) => {
+    conn = c;
+    conn.on('open', () => {});
+    conn.on('data', (data) => handleData(data));
+    conn.on('close', () => { alert('Соединение с соперником потеряно.'); });
+  });
+  peer.on('error', (err) => {
+    el('startBtn').disabled = false;
+    if(err.type === 'unavailable-id'){
+      showLobbyError('Этот код уже занят. Нажмите «Создать код» ещё раз и попробуйте другой.');
+    } else {
+      showLobbyError('Ошибка соединения: ' + err.type);
+    }
+    el('lobbyStatus').classList.add('hidden');
+  });
+}
+
+function startJoiner(){
+  el('startBtn').disabled = true;
+  showLobbyStatus('Подключаюсь к комнате «' + roomCode + '»…');
+  peer = new Peer();
+  peer.on('open', () => {
+    conn = peer.connect(roomCode, { reliable: true });
+    conn.on('open', () => {
+      conn.send({ type: 'meta', name: playerName || 'Игрок 2' });
+    });
+    conn.on('data', (data) => handleData(data));
+    conn.on('close', () => { alert('Соединение с соперником потеряно.'); });
+    conn.on('error', () => {
+      el('startBtn').disabled = false;
+      showLobbyError('Не удалось найти комнату с этим кодом. Проверьте, что первый игрок уже её открыл.');
+      el('lobbyStatus').classList.add('hidden');
+    });
+  });
+  peer.on('error', (err) => {
+    el('startBtn').disabled = false;
+    showLobbyError('Не удалось подключиться (' + err.type + '). Проверьте код и попробуйте снова.');
+    el('lobbyStatus').classList.add('hidden');
+  });
+}
+
+function handleData(data){
+  if(data.type === 'meta'){
+    // хост получил имя второго игрока
+    gameState.players[2] = data.name;
+    conn.send({ type: 'state', state: gameState });
+    enterGame();
+  } else if(data.type === 'state'){
+    gameState = data.state;
+    if(document.getElementById('gameScreen').classList.contains('hidden')) enterGame();
+    else render();
+  }
+}
+
+// ---------- Переход в игру ----------
+function enterGame(){
+  el('lobby').classList.add('hidden');
+  el('gameScreen').classList.remove('hidden');
+  el('roomPlaque').textContent = roomCode;
+  render();
+}
+
+el('roomPlaque').onclick = () => {
+  navigator.clipboard?.writeText(roomCode).catch(()=>{});
+  const btn = el('roomPlaque');
+  const old = btn.textContent;
+  btn.textContent = 'Скопировано!';
+  setTimeout(()=>{ btn.textContent = old; }, 1200);
+};
+el('rulesToggleBtn').onclick = () => {
+  el('rulesInGame').classList.toggle('hidden');
+};
+
+// ---------- Отправка состояния ----------
+function sendState(){
+  if(conn && conn.open) conn.send({ type: 'state', state: gameState });
+}
+
+function finishTurn(board, r, c, mover){
+  const winner = checkWinner(board);
+  const history = gameState.history.slice();
+  history.push((mover===1?'●':'○') + ' → ' + coordLabel(r,c));
+  if(history.length > 24) history.shift();
+  gameState = { ...gameState, board, turn: mover===1?2:1, winner, history };
+  selected = null; chainActive = false;
+  sendState();
+  render();
+}
+
+function handleCellClick(r,c){
+  const myTurn = gameState.turn === myRole && !gameState.winner;
+  if(!myTurn) return;
+  const board = gameState.board;
+  const val = board[r][c];
+
+  if(chainActive && selected){
+    const [sr,sc] = selected;
+    const jumps = getJumpMoves(board, sr, sc);
+    if(jumps.some(([jr,jc])=>jr===r&&jc===c)){
+      const nb = cloneBoard(board);
+      nb[sr][sc]=0; nb[r][c]=myRole;
+      const more = getJumpMoves(nb,r,c);
+      if(more.length>0){
+        gameState = { ...gameState, board: nb };
+        selected = [r,c]; chainActive = true;
+        render();
+      } else {
+        finishTurn(nb, r, c, myRole);
+      }
+    }
+    return;
+  }
+
+  if(selected){
+    const [sr,sc] = selected;
+    const simple = getSimpleMoves(board, sr, sc);
+    const jumps = getJumpMoves(board, sr, sc);
+    if(simple.some(([mr,mc])=>mr===r&&mc===c)){
+      const nb = cloneBoard(board);
+      nb[sr][sc]=0; nb[r][c]=myRole;
+      finishTurn(nb, r, c, myRole);
+      return;
+    }
+    if(jumps.some(([mr,mc])=>mr===r&&mc===c)){
+      const nb = cloneBoard(board);
+      nb[sr][sc]=0; nb[r][c]=myRole;
+      const more = getJumpMoves(nb,r,c);
+      if(more.length>0){
+        gameState = { ...gameState, board: nb };
+        selected = [r,c]; chainActive = true;
+        render();
+      } else {
+        finishTurn(nb, r, c, myRole);
+      }
+      return;
+    }
+    if(val === myRole){ selected=[r,c]; render(); return; }
+    selected = null; render();
+    return;
+  }
+
+  if(val === myRole){ selected=[r,c]; render(); }
+}
+
+el('endTurnBtn').onclick = () => {
+  if(!chainActive || !selected) return;
+  finishTurn(gameState.board, selected[0], selected[1], myRole);
+};
+el('newGameBtn').onclick = () => {
+  gameState = { board: initBoard(), turn: 1, winner: null, history: [], players: gameState.players };
+  selected = null; chainActive = false;
+  sendState();
+  render();
+};
+
+// ---------- Рендер ----------
+function render(){
+  const myTurn = gameState.turn === myRole && !gameState.winner;
+
+  // статус
+  const statusBlock = el('statusBlock');
+  if(gameState.winner){
+    statusBlock.innerHTML = '<div class="winner-banner">Победа: ' +
+      (gameState.players[gameState.winner] || ('Игрок ' + gameState.winner)) + '</div>';
+  } else {
+    const dotClass = gameState.turn===1 ? 'dot-light' : 'dot-dark';
+    const pulseClass = myTurn ? 'pulse' : '';
+    const text = myTurn ? 'Ваш ход' :
+      'Ход соперника' + (gameState.players[gameState.turn] ? ' (' + gameState.players[gameState.turn] + ')' : '');
+    statusBlock.innerHTML = '<div class="turn-banner"><span class="dot ' + dotClass + ' ' + pulseClass + '"></span>' + text + '</div>';
+  }
+
+  // доска
+  const boardEl = el('board');
+  boardEl.innerHTML = '';
+  const validSimple = (selected && !chainActive) ? getSimpleMoves(gameState.board, selected[0], selected[1]) : [];
+  const validJumps = selected ? getJumpMoves(gameState.board, selected[0], selected[1]) : [];
+
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const cell = document.createElement('div');
+      const isDark = (r+c)%2===1;
+      cell.className = 'cell ' + (isDark?'dark':'light');
+      if(selected && selected[0]===r && selected[1]===c) cell.classList.add('selected');
+      cell.style.cursor = myTurn ? 'pointer' : 'default';
+      cell.onclick = () => handleCellClick(r,c);
+
+      const val = gameState.board[r][c];
+      if((inZone1(r,c) || inZone2(r,c)) && val===0){
+        const mark = document.createElement('span');
+        mark.className = 'camp-mark';
+        cell.appendChild(mark);
+      }
+      if(val !== 0){
+        const p = document.createElement('div');
+        p.className = 'piece ' + (val===1?'p1':'p2');
+        cell.appendChild(p);
+      }
+      const isSimple = validSimple.some(([mr,mc])=>mr===r&&mc===c);
+      const isJump = validJumps.some(([mr,mc])=>mr===r&&mc===c);
+      if(isSimple || isJump){
+        const dot = document.createElement('span');
+        dot.className = 'move-dot';
+        dot.style.background = isJump ? 'var(--accent-gold)' : 'var(--accent-sage)';
+        cell.appendChild(dot);
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // легенда
+  el('legend').innerHTML =
+    '<span><span class="dot dot-light"></span>' + (gameState.players[1]||'Игрок 1') + '</span>' +
+    '<span><span class="dot dot-dark"></span>' + (gameState.players[2]||'Игрок 2') + '</span>';
+
+  // кнопки
+  el('endTurnBtn').style.display = (chainActive && myTurn && !gameState.winner) ? 'inline-block' : 'none';
+  el('newGameBtn').style.display = gameState.winner ? 'inline-block' : 'none';
+
+  // журнал
+  el('log').innerHTML = gameState.history.slice(-8).map(h => '<span>' + h + '</span>').join('');
+}
+</script>
+</body>
+</html>

@@ -71,7 +71,7 @@
   .status { color: var(--text-muted); font-size: 13.5px; margin-top: 14px; text-align: center; }
   .spinner { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--text-muted); border-top-color: var(--accent-gold); animation: spin 0.8s linear infinite; vertical-align: -1px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
+ 
   .game-wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .room-label { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
@@ -83,7 +83,7 @@
   .dot-dark { background: radial-gradient(circle at 35% 30%, #4a3323, #241812 70%, #120b07); border: 1px solid #0c0704; }
   .pulse { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
-
+ 
   .board-outer { display: flex; justify-content: center; }
   .board {
     display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
@@ -104,7 +104,7 @@
   .piece.p1 { background: radial-gradient(circle at 35% 30%, #FBF3E1, #E4CFA0 70%, #C9A876); border: 1px solid #b89a68; }
   .piece.p2 { background: radial-gradient(circle at 35% 30%, #4a3323, #241812 70%, #120b07); border: 1px solid #0c0704; }
   .move-dot { position: absolute; width: 26%; height: 26%; border-radius: 50%; opacity: .75; }
-
+ 
   .bottom-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-muted); }
   .legend span { display: flex; align-items: center; gap: 6px; }
@@ -113,24 +113,24 @@
 </style>
 </head>
 <body>
-
+ 
 <div id="lobby" class="wrap">
   <div class="center">
     <div class="eyebrow">деревянная доска · 8×8 · P2P без сервера</div>
     <h1>Уголки</h1>
     <div class="subtitle">партия на двоих, каждый — за своим экраном</div>
   </div>
-
+ 
   <div class="card">
     <label class="field-label">Ваше имя</label>
     <input type="text" id="playerName" placeholder="например, Бабушка" maxlength="24">
-
+ 
     <label class="field-label">Кто вы в этой партии</label>
     <div class="tabs">
       <div class="tab active" id="tabHost">Создаю игру (хожу первым)</div>
       <div class="tab" id="tabJoin">Присоединяюсь (хожу вторым)</div>
     </div>
-
+ 
     <div id="hostPanel">
       <label class="field-label">Код комнаты</label>
       <div class="row">
@@ -139,19 +139,19 @@
       </div>
       <div class="hint">Придумайте код и отправьте его второму игроку — например, в сообщении. После нажатия «Начать игру» ждите, пока второй игрок присоединится.</div>
     </div>
-
+ 
     <div id="joinPanel" class="hidden">
       <label class="field-label">Код комнаты (от первого игрока)</label>
       <input type="text" id="roomCodeJoin" placeholder="ABC123" maxlength="10" style="letter-spacing:0.12em;font-family:var(--font-mono)">
       <div class="hint">Введите код, который вам прислал первый игрок.</div>
     </div>
-
+ 
     <div id="lobbyError" class="error hidden"></div>
     <div id="lobbyStatus" class="status hidden"></div>
-
+ 
     <button class="btn btn-primary" id="startBtn" type="button" style="margin-top:18px">Начать игру</button>
   </div>
-
+ 
   <div class="rules-card">
     <div class="rules-title">Правила этой партии</div>
     <ul>
@@ -163,10 +163,10 @@
       <li>Фишки при прыжке не снимаются — просто перепрыгиваются.</li>
     </ul>
   </div>
-
+ 
   <div class="hint center">Соединение идёт напрямую между браузерами (WebRTC), без базы данных. Оба должны быть онлайн одновременно, пока не подключитесь.</div>
 </div>
-
+ 
 <div id="gameScreen" class="game-wrap hidden">
   <div class="top-bar">
     <div>
@@ -177,12 +177,10 @@
       <div id="statusBlock"></div>
     </div>
     <div style="display:flex; gap:8px;">
-      <button class="btn btn-ghost" id="voiceBtn" type="button">🎤 Включить звук</button>
       <button class="btn btn-ghost" id="rulesToggleBtn" type="button">Правила</button>
     </div>
   </div>
-  <audio id="remoteAudio" autoplay></audio>
-
+ 
   <div id="rulesInGame" class="rules-card hidden">
     <ul>
       <li>Ход на соседнюю клетку в любом направлении, включая диагональ.</li>
@@ -191,26 +189,26 @@
       <li>Простой шаг завершает ход сразу; после прыжка можно остановиться кнопкой «Закончить ход».</li>
     </ul>
   </div>
-
+ 
   <div class="board-outer">
     <div class="board" id="board"></div>
   </div>
-
+ 
   <div class="bottom-bar">
     <div class="legend" id="legend"></div>
     <button class="btn btn-primary" id="endTurnBtn" type="button" style="display:none; width:auto; padding:9px 16px; font-size:13.5px;">Закончить ход</button>
     <button class="btn btn-primary" id="newGameBtn" type="button" style="display:none; width:auto; padding:9px 16px; font-size:13.5px;">Начать заново</button>
   </div>
-
+ 
   <div class="log" id="log"></div>
 </div>
-
+ 
 <script>
 // ---------- Игровая логика (как в оригинале) ----------
 const SIZE = 8;
 const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 const COLS = ['a','b','c','d','e','f','g','h'];
-
+ 
 function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
 const CAMP_ROWS = 3, CAMP_COLS = 4; // блок 3×4 = 12 фишек в углу
 const CAMP_SIZE = CAMP_ROWS * CAMP_COLS;
@@ -257,7 +255,7 @@ function randomRoomCode(){
   let s=''; for(let i=0;i<6;i++) s+=chars[Math.floor(Math.random()*chars.length)];
   return s;
 }
-
+ 
 // ---------- Состояние ----------
 let myRole = 1;
 let playerName = '';
@@ -267,12 +265,9 @@ let conn = null;
 let gameState = null;
 let selected = null;
 let chainActive = false;
-let localStream = null;
-let currentCall = null;
-let micOn = false;
-
+ 
 const el = (id) => document.getElementById(id);
-
+ 
 // ---------- Лобби ----------
 el('tabHost').onclick = () => {
   el('tabHost').classList.add('active');
@@ -289,7 +284,7 @@ el('tabJoin').onclick = () => {
   myRole = 2;
 };
 el('genCodeBtn').onclick = () => { el('roomCodeHost').value = randomRoomCode(); };
-
+ 
 function showLobbyError(msg){
   el('lobbyError').textContent = msg;
   el('lobbyError').classList.remove('hidden');
@@ -299,7 +294,7 @@ function showLobbyStatus(msg){
   el('lobbyStatus').innerHTML = '<span class="spinner"></span>' + msg;
   el('lobbyStatus').classList.remove('hidden');
 }
-
+ 
 el('startBtn').onclick = () => {
   clearLobbyError();
   playerName = el('playerName').value.trim();
@@ -313,7 +308,7 @@ el('startBtn').onclick = () => {
     startJoiner();
   }
 };
-
+ 
 function startHost(){
   el('startBtn').disabled = true;
   showLobbyStatus('Открываю комнату «' + roomCode + '»…');
@@ -322,7 +317,6 @@ function startHost(){
     players: { 1: playerName || 'Игрок 1', 2: '' }
   };
   peer = new Peer(roomCode);
-  registerCallHandler();
   peer.on('open', () => {
     showLobbyStatus('Комната открыта. Ждём второго игрока — отправьте код «' + roomCode + '»…');
   });
@@ -342,12 +336,11 @@ function startHost(){
     el('lobbyStatus').classList.add('hidden');
   });
 }
-
+ 
 function startJoiner(){
   el('startBtn').disabled = true;
   showLobbyStatus('Подключаюсь к комнате «' + roomCode + '»…');
   peer = new Peer();
-  registerCallHandler();
   peer.on('open', () => {
     conn = peer.connect(roomCode, { reliable: true });
     conn.on('open', () => {
@@ -367,54 +360,7 @@ function startJoiner(){
     el('lobbyStatus').classList.add('hidden');
   });
 }
-
-// ---------- Голосовая связь (через тот же P2P-канал) ----------
-function registerCallHandler(){
-  peer.on('call', async (call) => {
-    if(!localStream){
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micOn = true;
-        el('voiceBtn').textContent = '🔇 Выключить звук';
-      } catch(e){
-        console.error('Микрофон недоступен', e);
-        return;
-      }
-    }
-    call.answer(localStream);
-    call.on('stream', attachRemoteStream);
-    currentCall = call;
-  });
-}
-
-function attachRemoteStream(stream){
-  el('remoteAudio').srcObject = stream;
-}
-
-async function enableVoice(){
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch(e){
-    alert('Не удалось получить доступ к микрофону: ' + e.message);
-    return;
-  }
-  micOn = true;
-  el('voiceBtn').textContent = '🔇 Выключить звук';
-  if(conn && conn.peer && !currentCall){
-    currentCall = peer.call(conn.peer, localStream);
-    currentCall.on('stream', attachRemoteStream);
-  }
-}
-
-function toggleVoice(){
-  if(!micOn){ enableVoice(); return; }
-  const track = localStream.getAudioTracks()[0];
-  track.enabled = !track.enabled;
-  el('voiceBtn').textContent = track.enabled ? '🔇 Выключить звук' : '🎤 Включить микрофон';
-}
-
-el('voiceBtn').onclick = toggleVoice;
-
+ 
 function handleData(data){
   if(data.type === 'meta'){
     // хост получил имя второго игрока
@@ -427,7 +373,7 @@ function handleData(data){
     else render();
   }
 }
-
+ 
 // ---------- Переход в игру ----------
 function enterGame(){
   el('lobby').classList.add('hidden');
@@ -435,7 +381,7 @@ function enterGame(){
   el('roomPlaque').textContent = roomCode;
   render();
 }
-
+ 
 el('roomPlaque').onclick = () => {
   navigator.clipboard?.writeText(roomCode).catch(()=>{});
   const btn = el('roomPlaque');
@@ -446,12 +392,12 @@ el('roomPlaque').onclick = () => {
 el('rulesToggleBtn').onclick = () => {
   el('rulesInGame').classList.toggle('hidden');
 };
-
+ 
 // ---------- Отправка состояния ----------
 function sendState(){
   if(conn && conn.open) conn.send({ type: 'state', state: gameState });
 }
-
+ 
 function finishTurn(board, r, c, mover){
   const winner = checkWinner(board);
   const history = gameState.history.slice();
@@ -462,13 +408,13 @@ function finishTurn(board, r, c, mover){
   sendState();
   render();
 }
-
+ 
 function handleCellClick(r,c){
   const myTurn = gameState.turn === myRole && !gameState.winner;
   if(!myTurn) return;
   const board = gameState.board;
   const val = board[r][c];
-
+ 
   if(chainActive && selected){
     const [sr,sc] = selected;
     const jumps = getJumpMoves(board, sr, sc);
@@ -486,7 +432,7 @@ function handleCellClick(r,c){
     }
     return;
   }
-
+ 
   if(selected){
     const [sr,sc] = selected;
     const simple = getSimpleMoves(board, sr, sc);
@@ -514,10 +460,10 @@ function handleCellClick(r,c){
     selected = null; render();
     return;
   }
-
+ 
   if(val === myRole){ selected=[r,c]; render(); }
 }
-
+ 
 el('endTurnBtn').onclick = () => {
   if(!chainActive || !selected) return;
   finishTurn(gameState.board, selected[0], selected[1], myRole);
@@ -528,11 +474,11 @@ el('newGameBtn').onclick = () => {
   sendState();
   render();
 };
-
+ 
 // ---------- Рендер ----------
 function render(){
   const myTurn = gameState.turn === myRole && !gameState.winner;
-
+ 
   // статус
   const statusBlock = el('statusBlock');
   if(gameState.winner){
@@ -545,13 +491,13 @@ function render(){
       'Ход соперника' + (gameState.players[gameState.turn] ? ' (' + gameState.players[gameState.turn] + ')' : '');
     statusBlock.innerHTML = '<div class="turn-banner"><span class="dot ' + dotClass + ' ' + pulseClass + '"></span>' + text + '</div>';
   }
-
+ 
   // доска
   const boardEl = el('board');
   boardEl.innerHTML = '';
   const validSimple = (selected && !chainActive) ? getSimpleMoves(gameState.board, selected[0], selected[1]) : [];
   const validJumps = selected ? getJumpMoves(gameState.board, selected[0], selected[1]) : [];
-
+ 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
       const cell = document.createElement('div');
@@ -560,7 +506,7 @@ function render(){
       if(selected && selected[0]===r && selected[1]===c) cell.classList.add('selected');
       cell.style.cursor = myTurn ? 'pointer' : 'default';
       cell.onclick = () => handleCellClick(r,c);
-
+ 
       const val = gameState.board[r][c];
       if((inZone1(r,c) || inZone2(r,c)) && val===0){
         const mark = document.createElement('span');
@@ -583,16 +529,16 @@ function render(){
       boardEl.appendChild(cell);
     }
   }
-
+ 
   // легенда
   el('legend').innerHTML =
     '<span><span class="dot dot-light"></span>' + (gameState.players[1]||'Игрок 1') + '</span>' +
     '<span><span class="dot dot-dark"></span>' + (gameState.players[2]||'Игрок 2') + '</span>';
-
+ 
   // кнопки
   el('endTurnBtn').style.display = (chainActive && myTurn && !gameState.winner) ? 'inline-block' : 'none';
   el('newGameBtn').style.display = gameState.winner ? 'inline-block' : 'none';
-
+ 
   // журнал
   el('log').innerHTML = gameState.history.slice(-8).map(h => '<span>' + h + '</span>').join('');
 }
